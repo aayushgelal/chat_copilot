@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Overview
 
-## Getting Started
+This project is a Chat Copilot built with **Next.js + Gemini API** that supports:
 
-First, run the development server:
+- Streaming responses (SSE)
+- Tool calling (local_search + calculator)
+- Tool execution audit log
+- Guardrails against prompt injection
+- Retry + timeout handling for tools
+- Trace logging per chat turn
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+The assistant is restricted to use tools for facts and math.  
+It does NOT answer from memory.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Frontend (Next.js / React)
+- Streaming chat UI
+- Message history
+- Thinking / Tool running state
+- Regenerate + Copy
+- Right-side tool execution panel
+- Latency + token usage display
 
-## Learn More
+Backend (Next.js API route)
+- POST /chat (SSE streaming)
+- Gemini tool-calling loop
+- Tool execution engine
+- Trace logging
 
-To learn more about Next.js, take a look at the following resources:
+Tools:
+1. local_search(query)
+2. calculator(expression)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## How It Works
 
-## Deploy on Vercel
+1. User sends a message.
+2. Backend streams Gemini response.
+3. If Gemini calls a tool:
+   - Tool execution starts (tool-start event)
+   - Tool runs with timeout + retry
+   - Tool result is returned to Gemini
+   - Final answer continues streaming
+4. Trace record is generated per turn:
+   - User message
+   - Tool calls
+   - Final answer
+   - Latency
+   - Token estimate
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tools
+
+### 1️⃣ local_search(query)
+
+Searches internal dataset (JSON file).
+Implements token-based scoring (ignores stopwords).
+
+### 2️⃣ calculator(expression)
+
+Uses mathjs to safely evaluate math expressions.
+
+---
+
+## Guardrails
+
+Basic prompt injection detection:
+- Blocks instructions like:
+  - "Ignore previous instructions"
+  - "System prompt"
+  - "Disregard rules"
+
+---
+
+## Retry + Timeout
+
+Tool execution includes:
+- 5s timeout
+- 2 retries before failing
+- Logged in tool audit panel
+
+---
+
+
+## Video Demo
+[📹 Demo Video] (https://drive.google.com/file/d/1t822OvJzE6Ep2NkWiWrO08pJcDPIA9nF/view?usp=sharing)
