@@ -10,7 +10,6 @@ export async function POST(req: NextRequest) {
     const trace = createTrace(userMessage);
     const encoder = new TextEncoder();
 
-    // Reconstruct history for Gemini's specific format
     const history = messages.slice(0, -1).map((m: any) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }]
@@ -25,7 +24,6 @@ export async function POST(req: NextRequest) {
         const chat = model.startChat({ history });
 
         try {
-          // --- TURN 1: Initial Prompt ---
           const result = await chat.sendMessageStream(userMessage);
           let functionCall: any = null;
           let assistantFullText = "";
@@ -46,7 +44,6 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // --- TURN 2: Tool Execution (The fix is here) ---
           if (functionCall) {
             const start = Date.now();
             const { output } = await runTool(functionCall.name, functionCall.args);
@@ -84,7 +81,6 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // --- FINALIZE ---
           trace.endTime = Date.now();
           trace.totalDurationMs = trace.endTime - trace.startTime;
           trace.tokenUsage = Math.ceil((trace.finalAnswer.length + userMessage.length) / 4);
